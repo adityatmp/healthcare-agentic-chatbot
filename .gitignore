@@ -1,0 +1,42 @@
+# Python
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Environment Variables
+.env
+.env.local
+
+# Vector Store & Processed Data
+data/processed/*
+!data/processed/.gitkeep
+
+# Documents
+data/documents/*
+!data/documents/.gitkeep
+
+# Node / React Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+.npm
+npm-debug.log*
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Gemini / Antigravity internal runtime logs
+.gemini/
