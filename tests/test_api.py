@@ -77,6 +77,30 @@ def test_post_chat_diagnosis_safety():
     assert "cannot diagnose" in data["answer"].lower()
 
 
+def test_post_chat_mcp_terminology_success():
+    payload = {"question": "What does hypertension mean?"}
+    response = client.post("/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["grounded"] is True
+    assert data["abstained"] is False
+    assert data["tool_used"] == "lookup_medical_term"
+    assert "Hypertension" in data["answer"]
+    assert "Cardiovascular" in data["answer"]
+
+
+def test_post_chat_mcp_terminology_unknown():
+    payload = {"question": "What does nonexistingtermxyz mean?"}
+    response = client.post("/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["grounded"] is False
+    assert data["abstained"] is True
+    assert data["tool_used"] == "lookup_medical_term"
+    assert "not found" in data["answer"].lower()
+
+
+
 
 def test_post_ingest_directory_reprocess():
     # Calling /ingest with no file payload re-processes data/documents/

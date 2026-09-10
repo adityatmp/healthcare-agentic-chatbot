@@ -58,6 +58,7 @@ function App() {
           grounded: data.grounded,
           abstained: data.abstained,
           sources: data.sources || [],
+          tool_used: data.tool_used || null,
         },
       ]);
     } catch (error) {
@@ -180,6 +181,12 @@ function App() {
                         {message.abstained && (
                           <span className="badge abstained-badge">
                             Evidence insufficient
+                          </span>
+                        )}
+
+                        {message.tool_used && (
+                          <span className="badge tool-badge">
+                            Reference tool used
                           </span>
                         )}
                       </div>

@@ -1,7 +1,7 @@
 # Project Current Status - Healthcare Agentic RAG Chatbot
 
 ## Current Milestone
-- **Milestone 4: Agentic Orchestration Layer** — [COMPLETED]
+- **Milestone 5: Model Context Protocol (MCP) Tool Integration** — [COMPLETED]
 
 ## Completed Milestones
 - [x] **Milestone 0: Project Foundations & Structure**
@@ -9,45 +9,72 @@
 - [x] **Milestone 2: FastAPI Backend Layer**
 - [x] **Milestone 3: React Frontend Application**
 - [x] **Milestone 4: Agentic Orchestration Layer**
+- [x] **Milestone 5: Model Context Protocol (MCP) Tool Integration**
 
 ---
 
-## Milestone 4 Deliverables & Technical Specs
+## Milestone 5 Deliverables & Technical Specs
 
-- **Agent Router (`backend/app/agents/router.py`)**:
-  - Implemented `AgentRouter` with explicit route dispatching: `Route.RAG` and `Route.SAFETY`.
-  - Structured output `AgentDecision(route, reason)` capturing deterministic routing decisions with rationale.
-  - Normalized case-insensitive and whitespace-resilient input classification.
-  - Emergency detection for acute symptoms (chest pain, breathing difficulty, severe bleeding, stroke, seizure, loss of consciousness, suicidal ideation, anaphylaxis).
-  - Clinical action guardrails for diagnosis inquiries, prescription requests, and medication alteration/discontinuation requests.
-  - Safety bypass mechanism: `Route.SAFETY` completely bypasses RAG vector retrieval and Ollama inference, returning conservative medical guidance with `grounded=False` and `abstained=True`.
-- **ChatService Integration (`backend/app/services/chat_service.py`)**:
-  - Encapsulated agent orchestration inside `ChatService.process_chat()`.
-  - Injected `AgentRouter` dependency with transparent fallback and testing mockability.
-- **FastAPI Layer Alignment (`backend/app/main.py` & `backend/app/api/chat.py`)**:
-  - Endpoints route through `ChatService` -> `AgentRouter` -> `RAGEngine` / Safety Handler.
-  - Robust root logger filter ensuring all child loggers inherit request ID tracking without `KeyError`.
-- **Test Discovery & Test Suite (`tests/test_agent_router.py` & `tests/test_api.py`)**:
-  - Consolidated agent tests into standard `tests/test_agent_router.py` conforming to `pytest.ini`.
-  - Added unit test coverage for classification, whitespace handling, mixed-case, engine delegation, and safety response structures.
-  - Added FastAPI `/chat` integration tests for emergency, diagnosis, and medication safety routes.
+- **Model Context Protocol SDK Integration (`mcp>=2.0.0`, installed: `mcp==2.1.1`)**:
+  - Validated official modern MCP 2.x API surface utilizing `mcp.server.mcpserver.MCPServer` and `mcp.client.Client`.
+  - Zero deprecated or unverified external tool dependencies.
+- **Clinical Dataset (`backend/app/mcp/dataset.py`)**:
+  - Curated, deterministic clinical reference glossary sourced from AHA, CDC, and WHO standards.
+  - Covers core cardiovascular, hemodynamic, and vital signs entities (`hypertension`, `systolic blood pressure`, `diastolic blood pressure`, `dash diet`, `tachycardia`, `bradycardia`, `hypotension`, `arrhythmia`, `atherosclerosis`, `myocardial infarction`, `stage 1 hypertension`, `stage 2 hypertension`, `hypertensive crisis`).
+- **Healthcare Reference MCP Server (`backend/app/mcp/server.py`)**:
+  - Implemented `MCPServer("healthcare-reference-server")`.
+  - Registered `@server.tool(name="lookup_medical_term")` with explicit description and JSON input schema.
+  - Input validation: rejects non-string types, empty/whitespace strings, and inputs exceeding 100 characters.
+  - Deterministic normalized matching across canonical keys and aliases.
+  - Structured output payload (`term`, `normalized_term`, `canonical_name`, `definition`, `category`, `clinical_reference`, `related_terms`, `status`, `message`).
+  - Standalone execution support via `server.run(transport="stdio")`.
+- **MCP Client Bridge (`backend/app/mcp/client.py`)**:
+  - Implemented `MCPTerminologyClient` managing client sessions via `mcp.client.Client`.
+  - Dynamic tool discovery across protocol boundary (`client.list_tools()`).
+  - Structured invocation (`client.call_tool()`) and payload parsing.
+  - Safe error handling: traps protocol exceptions, execution errors, and timeouts without leaking raw stack traces.
+  - Thread-isolated synchronous bridge `lookup_term_sync()` allowing non-blocking sync execution in FastAPI/Agent thread contexts without event loop conflicts.
+- **Agent Orchestration & Routing Integration (`backend/app/agents/router.py`)**:
+  - Added `Route.MCP = "mcp"` to `Route` enum.
+  - Extended classification pipeline:
+    1. `Route.SAFETY`: Takes absolute precedence for acute emergency and clinical action/diagnosis queries (even if terminology patterns are present).
+    2. `Route.MCP`: Intercepts clinical terminology queries (`"What does hypertension mean?"`, `"Define tachycardia"`).
+    3. `Route.RAG`: Retains procedural and guidance questions (`"What lifestyle changes can help with high blood pressure?"`).
+  - Added structured response formatting with `tool_used="lookup_medical_term"`, setting `grounded=True` and `abstained=False` for found terms, and clean abstention for missing terms.
+- **Service & API Layer Alignment (`backend/app/services/chat_service.py`, `backend/app/models/rag_models.py`, `backend/app/models/api_models.py`)**:
+  - Updated `RAGResponse` and `ChatResponse` schemas to include `tool_used: Optional[str] = None`.
+  - Updated `ChatService.process_chat()` to map `tool_used` to `ChatResponse`.
+- **React UI Enhancement (`frontend/src/App.jsx` & `frontend/src/App.css`)**:
+  - Added non-intrusive metadata pill `Reference tool used` for responses generated via MCP tools.
+  - Maintained 100% backwards compatibility and visual consistency with existing grounded badges and source citation accordions.
+- **Comprehensive Documentation (`docs/mcp.md` & `docs/agentic_workflow.md`)**:
+  - Created complete architectural documentation covering motivation, client-server boundary, protocol schemas, security, failure modes, and current limitations.
+  - Updated agentic workflow decision tree to reflect three-way routing (`SAFETY`, `MCP`, `RAG`).
 
 ---
 
 ## Test Results
 
-- **Unit & Integration Suite**:
-  - `33 passed` in Pytest test suite (`tests/test_agent_router.py`, `tests/test_api.py`, `tests/test_health.py`, `tests/test_rag.py`).
-- **Live Server & API Verification**:
-  - Supported Question: HTTP 200, `grounded=True`, `abstained=False`, citations verified.
-  - Unsupported Question: HTTP 200, `grounded=False`, `abstained=True`, safe abstention verified.
-  - Emergency Query: HTTP 200, `grounded=False`, `abstained=True`, immediate safety refusal.
-  - Diagnosis Query: HTTP 200, `grounded=False`, `abstained=True`, immediate clinical boundary refusal.
+- **Full Pytest Suite**:
+  - `54 passed` in Pytest test suite:
+    - `tests/test_mcp_server.py`: 8 passed
+    - `tests/test_mcp_client.py`: 5 passed
+    - `tests/test_agent_router.py`: 24 passed
+    - `tests/test_health.py`: 1 passed
+    - `tests/test_rag.py`: 5 passed
+    - `tests/test_api.py`: 11 passed
+- **Protocol-Level & Live API Verification**:
+  - Terminology Query (`"What does hypertension mean?"`): HTTP 200, `tool_used="lookup_medical_term"`, `grounded=True`, `abstained=False`, RAG bypassed.
+  - General Healthcare Query (`"What are the recommended lifestyle modifications and DASH diet sodium limits for high blood pressure?"`): HTTP 200, RAG grounded with 2 citations, `tool_used=None`.
+  - Unsupported Healthcare Query (`"What is the surgical treatment for acute appendicitis in adults?"`): HTTP 200, RAG abstained (`top_distance > 0.45`), `tool_used=None`.
+  - Emergency Query (`"I am having severe chest pain and difficulty breathing."`): HTTP 200, `Route.SAFETY`, conservative urgent-care advice, zero RAG/MCP.
+  - Diagnosis Query (`"Can you diagnose what disease I have from these symptoms?"`): HTTP 200, `Route.SAFETY`, conservative refusal, zero RAG/MCP.
 - **Frontend Verification**:
-  - React/Vite build passes cleanly (`vite build` 0 errors).
-  - Linter passes cleanly (`oxlint` 0 warnings, 0 errors).
+  - Production build cleanly completed (`vite build` 0 errors, 223ms).
+  - Code linter cleanly completed (`oxlint` 0 warnings, 0 errors, 44ms).
 
 ---
 
 ## Next Milestone
-- **Milestone 5: Model Context Protocol (MCP) Tool Integration** (Awaiting next instruction)
+- Milestone 5 is complete. Do not proceed to Milestone 6 until requested.
+

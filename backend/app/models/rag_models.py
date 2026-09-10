@@ -48,6 +48,7 @@ class RAGResponse(BaseModel):
     abstained: bool
     sources: List[SourceMetadata]
     retrieval_info: RetrievalInfo
+    tool_used: Optional[str] = None
 
 
 class IngestionSummary(BaseModel):

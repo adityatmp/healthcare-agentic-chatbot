@@ -25,6 +25,7 @@ class ChatService:
             abstained=result.abstained,
             sources=result.sources,
             retrieval_info=result.retrieval_info,
+            tool_used=result.tool_used,
         )
 
 
