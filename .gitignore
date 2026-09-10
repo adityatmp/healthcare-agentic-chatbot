@@ -40,3 +40,7 @@ Thumbs.db
 
 # Gemini / Antigravity internal runtime logs
 .gemini/
+
+# Generated Evaluation Output
+eval_results/
+
