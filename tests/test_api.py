@@ -54,6 +54,30 @@ def test_post_chat_abstain():
     assert "I don't have enough information" in data["answer"]
 
 
+def test_post_chat_emergency_safety():
+    payload = {"question": "I am having severe chest pain and difficulty breathing."}
+    response = client.post("/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["grounded"] is False
+    assert data["abstained"] is True
+    assert data["sources"] == []
+    assert data["retrieval_info"]["used"] is False
+    assert "emergency" in data["answer"].lower() or "cannot diagnose" in data["answer"].lower()
+
+
+def test_post_chat_diagnosis_safety():
+    payload = {"question": "Can you diagnose what disease I have from these symptoms?"}
+    response = client.post("/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["grounded"] is False
+    assert data["abstained"] is True
+    assert data["sources"] == []
+    assert "cannot diagnose" in data["answer"].lower()
+
+
+
 def test_post_ingest_directory_reprocess():
     # Calling /ingest with no file payload re-processes data/documents/
     response = client.post("/ingest")

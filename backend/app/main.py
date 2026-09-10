@@ -16,7 +16,11 @@ logging.basicConfig(
 
 
 class RequestIdFilter(logging.Filter):
-    """Logging filter to inject request_id into log records."""
+    """Logging filter to inject request_id into log records.
+
+    Applied to the root logger so all child loggers (rag, services, agents)
+    share the same safe fallback when no request context is available.
+    """
 
     def filter(self, record):
         if not hasattr(record, "request_id"):
@@ -24,8 +28,14 @@ class RequestIdFilter(logging.Filter):
         return True
 
 
+# Apply filter to root logger and its handlers so all child loggers inherit it
+_request_id_filter = RequestIdFilter()
+logging.getLogger().addFilter(_request_id_filter)
+for _h in logging.root.handlers:
+    _h.addFilter(_request_id_filter)
+
 logger = logging.getLogger("healthcare_chatbot.api")
-logger.addFilter(RequestIdFilter())
+logger.addFilter(_request_id_filter)
 
 app = FastAPI(
     title="Healthcare Agentic RAG Chatbot API",

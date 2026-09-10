@@ -1,32 +1,53 @@
 # Project Current Status - Healthcare Agentic RAG Chatbot
 
 ## Current Milestone
-- **Milestone 2: FastAPI Backend Layer** — [COMPLETED]
+- **Milestone 4: Agentic Orchestration Layer** — [COMPLETED]
 
 ## Completed Milestones
 - [x] **Milestone 0: Project Foundations & Structure**
 - [x] **Milestone 1: Core RAG Vertical Slice**
 - [x] **Milestone 2: FastAPI Backend Layer**
+- [x] **Milestone 3: React Frontend Application**
+- [x] **Milestone 4: Agentic Orchestration Layer**
 
-## Milestone 2 Deliverables & Technical Specs
-- **Endpoints Implemented**:
-  - `GET /health`: System health and service version status.
-  - `GET /health/ollama`: Ollama server connectivity and model availability check (`qwen3:8b`).
-  - `POST /chat`: Grounded RAG query processing returning structured `ChatResponse` (`answer`, `grounded`, `abstained`, `sources`, `retrieval_info`).
-  - `POST /ingest`: PDF document upload with file validation, 20MB size limits, path traversal protection, and vector store refresh.
-- **Middleware & Observability**:
-  - UUID `X-Request-ID` tracking middleware.
-  - Process time tracking (`X-Process-Time-MS`).
-  - Exception handlers for `OllamaConnectionError` (503) and `OllamaTimeoutError` (504).
-  - CORS middleware configured for frontend local servers (`localhost:5173`).
-  - OpenAPI interactive docs auto-served at `/docs` and `/redoc`.
-- **Clean Architecture**:
-  - Service layer separation (`backend/app/services/chat_service.py`, `backend/app/services/ingest_service.py`).
-  - API routers (`backend/app/api/health.py`, `backend/app/api/chat.py`, `backend/app/api/ingest.py`).
+---
+
+## Milestone 4 Deliverables & Technical Specs
+
+- **Agent Router (`backend/app/agents/router.py`)**:
+  - Implemented `AgentRouter` with explicit route dispatching: `Route.RAG` and `Route.SAFETY`.
+  - Structured output `AgentDecision(route, reason)` capturing deterministic routing decisions with rationale.
+  - Normalized case-insensitive and whitespace-resilient input classification.
+  - Emergency detection for acute symptoms (chest pain, breathing difficulty, severe bleeding, stroke, seizure, loss of consciousness, suicidal ideation, anaphylaxis).
+  - Clinical action guardrails for diagnosis inquiries, prescription requests, and medication alteration/discontinuation requests.
+  - Safety bypass mechanism: `Route.SAFETY` completely bypasses RAG vector retrieval and Ollama inference, returning conservative medical guidance with `grounded=False` and `abstained=True`.
+- **ChatService Integration (`backend/app/services/chat_service.py`)**:
+  - Encapsulated agent orchestration inside `ChatService.process_chat()`.
+  - Injected `AgentRouter` dependency with transparent fallback and testing mockability.
+- **FastAPI Layer Alignment (`backend/app/main.py` & `backend/app/api/chat.py`)**:
+  - Endpoints route through `ChatService` -> `AgentRouter` -> `RAGEngine` / Safety Handler.
+  - Robust root logger filter ensuring all child loggers inherit request ID tracking without `KeyError`.
+- **Test Discovery & Test Suite (`tests/test_agent_router.py` & `tests/test_api.py`)**:
+  - Consolidated agent tests into standard `tests/test_agent_router.py` conforming to `pytest.ini`.
+  - Added unit test coverage for classification, whitespace handling, mixed-case, engine delegation, and safety response structures.
+  - Added FastAPI `/chat` integration tests for emergency, diagnosis, and medication safety routes.
+
+---
 
 ## Test Results
-- `13 passed` in Pytest test suite (`tests/test_health.py`, `tests/test_rag.py`, `tests/test_api.py`).
-- All endpoints (`/health`, `/health/ollama`, `/chat`, `/ingest`) verified cleanly.
+
+- **Unit & Integration Suite**:
+  - `33 passed` in Pytest test suite (`tests/test_agent_router.py`, `tests/test_api.py`, `tests/test_health.py`, `tests/test_rag.py`).
+- **Live Server & API Verification**:
+  - Supported Question: HTTP 200, `grounded=True`, `abstained=False`, citations verified.
+  - Unsupported Question: HTTP 200, `grounded=False`, `abstained=True`, safe abstention verified.
+  - Emergency Query: HTTP 200, `grounded=False`, `abstained=True`, immediate safety refusal.
+  - Diagnosis Query: HTTP 200, `grounded=False`, `abstained=True`, immediate clinical boundary refusal.
+- **Frontend Verification**:
+  - React/Vite build passes cleanly (`vite build` 0 errors).
+  - Linter passes cleanly (`oxlint` 0 warnings, 0 errors).
+
+---
 
 ## Next Milestone
-- **Milestone 3: React Frontend Application** (Awaiting user approval)
+- **Milestone 5: Model Context Protocol (MCP) Tool Integration** (Awaiting next instruction)
