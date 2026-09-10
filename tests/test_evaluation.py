@@ -15,7 +15,7 @@ from app.models.rag_models import RAGResponse, RetrievalInfo, SourceMetadata
 
 
 def test_evaluation_dataset_schema_and_size():
-    """Verify eval/dataset.json contains required fields and all 6 capability groups."""
+    """Verify eval/dataset.json contains required fields and all 7 capability groups."""
     cases = load_dataset("eval/dataset.json")
     assert len(cases) >= 20, "Evaluation dataset must contain at least 20 curated cases"
 

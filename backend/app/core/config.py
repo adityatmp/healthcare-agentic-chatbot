@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # Vector Database Configuration
     VECTOR_DB_PATH: str = "data/processed/chroma"
     COLLECTION_NAME: str = "healthcare_docs"
-    SIMILARITY_THRESHOLD: float = 0.45
+    SIMILARITY_THRESHOLD: float = 0.30
 
     # RAG Retrieval Configuration
     CHUNK_SIZE: int = 500
