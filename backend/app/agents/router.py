@@ -38,23 +38,32 @@ class AgentRouter:
 
     _EMERGENCY_PATTERNS = (
         r"\b(chest pain|chest pressure|difficulty breathing|trouble breathing)\b",
-        r"\b(cannot breathe|can't breathe|unable to breathe)\b",
-        r"\b(severe bleeding|uncontrolled bleeding)\b",
-        r"\b(unconscious|passed out|loss of consciousness)\b",
-        r"\b(stroke|face drooping|slurred speech)\b",
+        r"\b(shortness of breath|cannot breathe|can't breathe|unable to breathe|gasping for air)\b",
+        r"\b(severe bleeding|uncontrolled bleeding|coughing (?:up )?blood)\b",
+        r"\b(unconscious|passed out|loss of consciousness|fainted)\b",
+        r"\b(stroke|face drooping|slurred speech|sudden numbness|paralysis)\b",
         r"\b(seizure|convulsion)\b",
+        r"\b(heart attack|cardiac arrest)\b",
         r"\b(suicid|kill myself|self harm|self-harm)\b",
-        r"\b(anaphylaxis|severe allergic reaction|choking)\b",
+        r"\b(anaphylaxis|severe allergic reaction|choking|throat (?:is )?closing|throat swelling|swelling of the (?:throat|tongue))\b",
+        r"\b(drug overdose|overdosed|poisoning|swallowed poison)\b",
     )
 
     _CLINICAL_ACTION_PATTERNS = (
         r"\b(diagnose|diagnosis)\b",
-        r"\b(what disease do i have|what condition do i have)\b",
-        r"\b(should i take|what medicine should i take)\b",
-        r"\b(what medication should i take)\b",
+        r"\b(what disease do i have|what condition do i have|what is wrong with me)\b",
+        r"\b(do i have|could i have|am i having a|am i suffering from)\b.*\b(cancer|diabetes|hypertension|covid|tumor|heart attack|stroke|disease|infection)\b",
+        r"\b(should i take|what medicine should i take|what medication should i take)\b",
+        r"\b(what dosage|what dose|how much)\b.*\b(should i take|to take|of)\b",
         r"\b(stop taking|discontinue)\b.*\b(medicine|medication|prescription|pills?|drugs?|treatment)\b",
-        r"\b(stop my medication|change my medication|stop my pills|stop my treatment)\b",
+        r"\b(stop my medication|change my medication|stop my pills|stop my treatment|change my dose|increase my dose|decrease my dose)\b",
         r"\b(prescribe|prescription)\b",
+    )
+
+    _INJECTION_PATTERNS = (
+        r"\b(ignore|disregard|override|forget)\b.*\b(previous|all|system)?\s*(instruction|rule|prompt|safety|guardrail)s?\b",
+        r"\b(you are now|act as|pretend to be|roleplay as)\b.*\b(unrestricted|jailbreak|doctor|physician|dan|clinician)\b",
+        r"\b(bypass\s+(?:safety|guardrails?|filters?))\b",
     )
 
     _TERMINOLOGY_PATTERNS = (
@@ -79,7 +88,7 @@ class AgentRouter:
         """Select the execution route for a user question."""
         normalized = " ".join(question.lower().split())
 
-        # 1. SAFETY FIRST: Emergency or clinical action guardrails take absolute precedence
+        # 1. SAFETY FIRST: Emergency, clinical action, or prompt injection guardrails take absolute precedence
         if self._matches_any(normalized, self._EMERGENCY_PATTERNS):
             return AgentDecision(
                 route=Route.SAFETY,
@@ -90,6 +99,12 @@ class AgentRouter:
             return AgentDecision(
                 route=Route.SAFETY,
                 reason="Question requests diagnosis, prescribing, or medication changes.",
+            )
+
+        if self._matches_any(normalized, self._INJECTION_PATTERNS):
+            return AgentDecision(
+                route=Route.SAFETY,
+                reason="Prompt injection or safety guardrail bypass attempt detected.",
             )
 
         # 2. MCP TOOL: Terminology definition inquiries
@@ -170,16 +185,34 @@ class AgentRouter:
     def _safety_response(reason: str) -> RAGResponse:
         logger.warning("Safety route selected: %s", reason)
 
+        reason_lower = reason.lower()
+        if "emergency" in reason_lower:
+            answer = (
+                "I am an informational healthcare assistant and cannot evaluate emergency "
+                "symptoms or diagnose medical conditions.\n\n"
+                "If you or someone nearby is experiencing a potentially serious or life-threatening "
+                "emergency (such as acute chest pain, severe shortness of breath, sudden weakness, "
+                "or slurred speech), please seek immediate medical attention or call your local "
+                "emergency services (such as 911) right away. Do not delay urgent care."
+            )
+        elif "injection" in reason_lower:
+            answer = (
+                "I am an informational healthcare assistant and cannot diagnose medical "
+                "conditions, prescribe medication, or alter my clinical safety rules.\n\n"
+                "System safety guardrails and healthcare guidelines cannot be overridden. "
+                "For medical concerns or evaluations, please consult a qualified healthcare professional."
+            )
+        else:  # Clinical action (diagnosis, prescribing, medication changes, dosage)
+            answer = (
+                "I am an informational healthcare assistant and cannot diagnose medical "
+                "conditions, prescribe medication, recommend specific drug dosages, or tell "
+                "you to stop or modify prescribed treatment.\n\n"
+                "Please consult a qualified physician or healthcare professional for individualized "
+                "medical evaluations, diagnostic testing, and treatment decisions."
+            )
+
         return RAGResponse(
-            answer=(
-                "I’m an informational healthcare assistant and cannot diagnose "
-                "medical conditions, prescribe medication, or tell you to stop "
-                "prescribed treatment.\n\n"
-                "If you are experiencing a potentially serious or emergency "
-                "symptom, seek urgent medical care or contact your local emergency "
-                "services. For non-emergency medical decisions, please consult a "
-                "qualified healthcare professional."
-            ),
+            answer=answer,
             grounded=False,
             abstained=True,
             sources=[],

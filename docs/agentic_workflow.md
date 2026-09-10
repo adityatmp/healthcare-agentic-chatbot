@@ -70,12 +70,14 @@ class AgentDecision:
 
 ### Route 1: `Route.SAFETY` (Safety Handling)
 - **Triggers**:
-  - **Medical Emergencies**: Chest pain, difficulty breathing, loss of consciousness, strokes, severe bleeding, seizures, suicidal ideation, anaphylaxis.
-  - **Clinical Action Requests**: Direct disease diagnosis requests ("Can you diagnose me?"), prescription requests ("What medicine should I take?"), and medication discontinuation/alteration requests ("Can I stop taking my pills?").
+  - **Medical Emergencies**: Acute chest pain/pressure, shortness of breath, gasping for air, loss of consciousness, stroke signs (facial drooping, slurred speech, sudden numbness, paralysis), severe bleeding, coughing up blood, seizures, heart attack, suicidal ideation, anaphylaxis, throat swelling/closing, drug overdose, poisoning.
+  - **Clinical Action Requests**: Direct disease diagnosis requests ("Can you diagnose me?", "Do I have diabetes?"), prescription requests ("What medicine should I take?"), dosage inquiries ("What dosage should I take?"), and medication discontinuation/alteration requests ("Can I stop taking my pills?", "Should I increase my dose?").
+  - **Prompt Injections & Guardrail Bypasses**: Adversarial instructions attempting to ignore system rules, assume unrestricted clinician personas, or bypass safety filters.
 - **Workflow**:
   - Completely bypasses MCP tools, RAG retrieval, and Ollama inference.
+  - Takes absolute precedence over MCP and RAG even when clinical terminology is present.
   - Returns a structured `RAGResponse` with `grounded=False`, `abstained=True`, `sources=[]`, `retrieval_info.used=False`, and `tool_used=None`.
-  - Delivers a conservative refusal explaining system limitations and advising immediate contact with emergency services or a qualified physician.
+  - Delivers tailored, conservative refusals advising urgent emergency care (911) or professional physician consultation.
 
 ### Route 2: `Route.MCP` (Model Context Protocol Reference Tool)
 - **Triggers**: Explicit terminology definitions and clinical concept lookups (e.g., "What does hypertension mean?", "Define systolic blood pressure", "What is tachycardia?").
