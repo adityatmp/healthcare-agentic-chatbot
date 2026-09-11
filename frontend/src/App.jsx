@@ -1,234 +1,201 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import "./App.css";
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 
-function App() {
+const SUGGESTED_QUESTIONS = [
+  "What helps lower blood pressure?",
+  "What is the DASH diet?",
+  "What is the upper limit for boron?",
+];
+
+function routeLabel(msg) {
+  if (msg.abstained) return null;
+  if (msg.tool_used && msg.grounded)
+    return `MCP \u00b7 ${msg.sources?.length ?? 0} source${msg.sources?.length !== 1 ? "s" : ""}`;
+  if (msg.tool_used) return "MCP \u00b7 Reference lookup";
+  if (msg.grounded)
+    return `RAG \u00b7 ${msg.sources?.length ?? 0} source${msg.sources?.length !== 1 ? "s" : ""}`;
+  return null;
+}
+
+export default function App() {
   const [messages, setMessages] = useState([]);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
+  const bottomRef = useRef(null);
+  const textareaRef = useRef(null);
+  // Synchronous in-flight guard — prevents double-submission caused by
+  // Enter keydown firing sendMessage AND the form submit event both seeing
+  // a stale loading=false before React batches the state update.
+  const inFlightRef = useRef(false);
 
-  const suggestedQuestions = [
-    "What lifestyle changes can help with high blood pressure?",
-    "What is the DASH diet?",
-    "How much sodium is recommended for high blood pressure?",
-  ];
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [question]);
 
   async function sendMessage(text = question) {
     const trimmed = text.trim();
-
-    if (!trimmed || loading) return;
-
-    const userMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: trimmed,
-    };
-
-    setMessages((current) => [...current, userMessage]);
+    // inFlightRef is updated synchronously (unlike React state) so concurrent
+    // calls from both the keydown handler and the form submit event are blocked.
+    if (!trimmed || inFlightRef.current) return;
+    inFlightRef.current = true;
+    setMessages((cur) => [
+      ...cur,
+      { id: crypto.randomUUID(), role: "user", content: trimmed },
+    ]);
     setQuestion("");
     setLoading(true);
-
     try {
-      const response = await fetch(`${API_BASE_URL}/chat`, {
+      const res = await fetch(`${API_BASE_URL}/chat`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          question: trimmed,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: trimmed }),
       });
-
-      if (!response.ok) {
-        throw new Error(`Request failed with HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      setMessages((current) => [
-        ...current,
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setMessages((cur) => [
+        ...cur,
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content:
-            data.answer ||
-            "I couldn't generate a response. Please try again.",
-          grounded: data.grounded,
-          abstained: data.abstained,
-          sources: data.sources || [],
-          tool_used: data.tool_used || null,
+          content: data.answer || "I could not generate a response. Please try again.",
+          grounded: data.grounded ?? false,
+          abstained: data.abstained ?? false,
+          sources: data.sources ?? [],
+          tool_used: data.tool_used ?? null,
         },
       ]);
-    } catch (error) {
-      console.error(error);
-
-      setMessages((current) => [
-        ...current,
+    } catch (err) {
+      console.error(err);
+      setMessages((cur) => [
+        ...cur,
         {
           id: crypto.randomUUID(),
           role: "assistant",
           error: true,
           content:
-            "I couldn't connect to the healthcare assistant. Make sure the FastAPI backend is running.",
+            "Could not reach the healthcare assistant. Ensure the FastAPI backend is running on port 8000.",
         },
       ]);
     } finally {
       setLoading(false);
+      inFlightRef.current = false;
     }
   }
 
-  function handleSubmit(event) {
-    event.preventDefault();
+  function handleSubmit(e) {
+    e.preventDefault();
     sendMessage();
   }
 
-  function handleKeyDown(event) {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
+  function handleKeyDown(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      // Prevent the keydown from also triggering the form's submit event,
+      // which would call sendMessage a second time via handleSubmit.
+      e.preventDefault();
+      e.stopPropagation();
       sendMessage();
     }
   }
 
+  const hasMessages = messages.length > 0;
+
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-mark">+</div>
-
-          <div>
-            <div className="brand-name">HealthRAG</div>
-            <div className="brand-subtitle">
-              Grounded healthcare information assistant
-            </div>
-          </div>
-        </div>
-
-        <div className="status-pill">
-          <span className="status-dot" />
-          Local AI
-        </div>
+    <div className="shell">
+      <header className="site-header">
+        <span className="wordmark">HealthRAG</span>
+        <span className="header-meta">Local AI</span>
       </header>
 
-      <main className="main-content">
-        {messages.length === 0 ? (
-          <section className="welcome-section">
-            <div className="hero-icon">✚</div>
-
-            <p className="eyebrow">PRIVATE • GROUNDED • LOCAL</p>
-
-            <h1>
-              Ask about your
-              <span> health information.</span>
-            </h1>
-
-            <p className="hero-description">
-              Get answers grounded in the healthcare documents available to
-              this assistant, with source and page citations when available.
-            </p>
-
-            <div className="suggestion-grid">
-              {suggestedQuestions.map((item) => (
-                <button
-                  className="suggestion-card"
-                  key={item}
-                  onClick={() => sendMessage(item)}
-                >
-                  <span>{item}</span>
-                  <span className="arrow">↗</span>
-                </button>
-              ))}
+      <div className="body">
+        <div className="chat-region" aria-live="polite">
+          {!hasMessages ? (
+            <div className="empty-state">
+              <p className="empty-heading">What can I help you find?</p>
+              <p className="empty-sub">
+                Ask a health-related question using the available sources.
+              </p>
+              <ul className="suggestion-list">
+                {SUGGESTED_QUESTIONS.map((q) => (
+                  <li key={q}>
+                    <button
+                      className="suggestion-btn"
+                      type="button"
+                      onClick={() => sendMessage(q)}
+                    >
+                      {q}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </section>
-        ) : (
-          <section className="chat-section">
-            {messages.map((message) => (
-              <article
-                key={message.id}
-                className={`message-row ${message.role === "user"
-                  ? "user-row"
-                  : "assistant-row"
-                  }`}
-              >
+          ) : (
+            <div className="message-list">
+              {messages.map((msg) => (
                 <div
-                  className={`message-bubble ${message.role === "user"
-                    ? "user-bubble"
-                    : "assistant-bubble"
-                    } ${message.error ? "error-bubble" : ""}`}
+                  key={msg.id}
+                  className={`message-row ${msg.role === "user" ? "user-row" : "assistant-row"}`}
                 >
-                  <div className="message-label">
-                    {message.role === "user" ? "You" : "HealthRAG"}
-                  </div>
-
-                  <div className="message-content">
-                    {message.role === "assistant" && !message.error ? (
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
-                    ) : (
-                      message.content
-                    )}
-                  </div>
-
-                  {message.role === "assistant" && !message.error && (
-                    <div className="response-meta">
-                      <div className="response-badges">
-                        {message.grounded && (
-                          <span className="badge grounded-badge">
-                            ✓ Grounded
-                          </span>
-                        )}
-
-                        {message.abstained && (
-                          <span className="badge abstained-badge">
-                            Evidence insufficient
-                          </span>
-                        )}
-
-                        {message.tool_used && !message.abstained && (
-                          <span className="badge tool-badge">
-                            Reference tool used
-                          </span>
+                  {msg.role === "user" ? (
+                    <div className="user-bubble">{msg.content}</div>
+                  ) : (
+                    <div className={`assistant-block${msg.error ? " error-block" : ""}`}>
+                      <div className="assistant-label">HealthRAG</div>
+                      <div className="message-content">
+                        {msg.error ? (
+                          msg.content
+                        ) : (
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
                         )}
                       </div>
 
-                      {message.sources.length > 0 && (
+                      {!msg.error && routeLabel(msg) && (
+                        <p className="route-meta">{routeLabel(msg)}</p>
+                      )}
+
+                      {!msg.error && msg.abstained && (
+                        <p className="abstained-notice">
+                          The available sources do not contain sufficient information to answer this question.
+                        </p>
+                      )}
+
+                      {!msg.error && msg.sources && msg.sources.length > 0 && (
                         <div className="sources">
-                          <div className="sources-title">Sources</div>
-
-                          {message.sources.map((source, index) => (
+                          <div className="sources-divider" />
+                          <p className="sources-heading">Source</p>
+                          {msg.sources.map((src, i) => (
                             <div
-                              className="source-item"
-                              key={`${source.document}-${source.page}-${index}`}
+                              className="source-entry"
+                              key={`${src.document}-${src.page}-${i}`}
                             >
-                              <span className="source-number">
-                                {index + 1}
+                              {src.organization && (
+                                <span className="source-org">{src.organization}</span>
+                              )}
+                              <span className="source-title">
+                                {src.title || src.document}
                               </span>
-
-                              <div className="source-details">
-                                <div className="source-document">
-                                  {source.title || source.document}
-                                </div>
-
-                                <div className="source-page">
-                                  Page {source.page}
-                                  {source.organization && (
-                                    <span className="source-org">
-                                      {" "}• {source.organization}
-                                    </span>
-                                  )}
-                                </div>
-
-                                {source.url && (
-                                  <a
-                                    className="source-link"
-                                    href={source.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
-                                    Official Reference ↗
-                                  </a>
-                                )}
-                              </div>
+                              {src.page && (
+                                <span className="source-page">Page {src.page}</span>
+                              )}
+                              {src.url && (
+                                <a
+                                  className="source-link"
+                                  href={src.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  official source
+                                </a>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -236,61 +203,52 @@ function App() {
                     </div>
                   )}
                 </div>
-              </article>
-            ))}
+              ))}
 
-            {loading && (
-              <article className="message-row assistant-row">
-                <div className="message-bubble assistant-bubble">
-                  <div className="message-label">HealthRAG</div>
-
-                  <div className="typing-indicator">
-                    <span />
-                    <span />
-                    <span />
-                    <em>Searching healthcare sources…</em>
+              {loading && (
+                <div className="message-row assistant-row">
+                  <div className="assistant-block">
+                    <div className="assistant-label">HealthRAG</div>
+                    <div className="thinking-dots">
+                      <span /><span /><span />
+                    </div>
                   </div>
                 </div>
-              </article>
-            )}
-          </section>
-        )}
+              )}
 
-        <section className="composer-section">
+              <div ref={bottomRef} />
+            </div>
+          )}
+        </div>
+
+        <div className="composer-wrap">
           <form className="composer" onSubmit={handleSubmit}>
             <textarea
+              ref={textareaRef}
+              id="chat-input"
+              className="composer-input"
               value={question}
-              onChange={(event) => setQuestion(event.target.value)}
+              onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask a healthcare question..."
               rows={1}
               disabled={loading}
+              aria-label="Healthcare question input"
             />
-
             <button
-              className="send-button"
+              className="composer-send"
               type="submit"
               disabled={!question.trim() || loading}
+              aria-label="Send"
             >
-              ↑
+              Send
             </button>
           </form>
-
-          <div className="composer-note">
-            Answers are grounded in the available healthcare sources.
-          </div>
-        </section>
-      </main>
-
-      <footer className="footer">
-        <div>HealthRAG • Local healthcare knowledge assistant</div>
-
-        <div className="footer-disclaimer">
-          Not a doctor. Not a substitute for professional medical advice.
+          <p className="composer-note">
+            Grounded in curated healthcare sources. Not a substitute for professional medical advice.
+          </p>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
-
-export default App;
