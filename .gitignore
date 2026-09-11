@@ -19,10 +19,6 @@ htmlcov/
 data/processed/*
 !data/processed/.gitkeep
 
-# Documents
-data/documents/*
-!data/documents/.gitkeep
-
 # Node / React Frontend
 node_modules/
 frontend/node_modules/

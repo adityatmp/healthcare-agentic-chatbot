@@ -184,7 +184,7 @@ function App() {
                           </span>
                         )}
 
-                        {message.tool_used && (
+                        {message.tool_used && !message.abstained && (
                           <span className="badge tool-badge">
                             Reference tool used
                           </span>
@@ -204,14 +204,30 @@ function App() {
                                 {index + 1}
                               </span>
 
-                              <div>
+                              <div className="source-details">
                                 <div className="source-document">
-                                  {source.document}
+                                  {source.title || source.document}
                                 </div>
 
                                 <div className="source-page">
                                   Page {source.page}
+                                  {source.organization && (
+                                    <span className="source-org">
+                                      {" "}• {source.organization}
+                                    </span>
+                                  )}
                                 </div>
+
+                                {source.url && (
+                                  <a
+                                    className="source-link"
+                                    href={source.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    Official Reference ↗
+                                  </a>
+                                )}
                               </div>
                             </div>
                           ))}

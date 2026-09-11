@@ -22,6 +22,11 @@ def main():
         default="data/documents",
         help="Path to directory containing PDF files",
     )
+    ingest_parser.add_argument(
+        "--clear",
+        action="store_true",
+        help="Clear existing vector store before ingestion",
+    )
 
     # Query command
     query_parser = subparsers.add_parser("query", help="Query the RAG engine")
@@ -37,10 +42,10 @@ def main():
 
     if args.command == "ingest":
         print("=" * 60)
-        print(f"INGESTING DOCUMENTS FROM: {args.docs_dir}")
+        print(f"INGESTING DOCUMENTS FROM: {args.docs_dir} (clear={args.clear})")
         print("=" * 60)
 
-        summary = engine.ingest_directory(args.docs_dir)
+        summary = engine.ingest_directory(args.docs_dir, clear_existing=args.clear)
 
         print("\n--- INGESTION SUMMARY ---")
         print(f"Documents Processed: {summary.documents_processed}")

@@ -16,6 +16,7 @@ class Route(str, Enum):
     RAG = "rag"
     SAFETY = "safety"
     MCP = "mcp"
+    GREETING = "greeting"
 
 
 @dataclass
@@ -66,6 +67,11 @@ class AgentRouter:
         r"\b(bypass\s+(?:safety|guardrails?|filters?))\b",
     )
 
+    _GREETING_PATTERNS = (
+        r"^(hello|hi|hey|greetings|good morning|good afternoon|good evening)(\s+there)?([!.,? ]*)$",
+        r"^(thanks|thank you|thx|many thanks)(\s+a lot|\s+so much)?([!.,? ]*)$",
+    )
+
     _TERMINOLOGY_PATTERNS = (
         r"^what\s+does\s+(.+?)\s+mean\??$",
         r"^what\s+is\s+(?:the\s+)?meaning\s+of\s+(.+?)\??$",
@@ -107,7 +113,14 @@ class AgentRouter:
                 reason="Prompt injection or safety guardrail bypass attempt detected.",
             )
 
-        # 2. MCP TOOL: Terminology definition inquiries
+        # 2. GREETINGS & PLEASANTRIES: Conversational openings/closings do not invoke RAG or MCP
+        if self._matches_any(normalized, self._GREETING_PATTERNS):
+            return AgentDecision(
+                route=Route.GREETING,
+                reason="Conversational greeting or pleasantry routed to direct assistant response.",
+            )
+
+        # 3. MCP TOOL: Terminology definition inquiries
         term = self._extract_terminology_term(normalized)
         if term:
             return AgentDecision(
@@ -116,7 +129,7 @@ class AgentRouter:
                 term=term,
             )
 
-        # 3. RAG: General healthcare knowledge retrieval
+        # 4. RAG: General healthcare knowledge retrieval
         return AgentDecision(
             route=Route.RAG,
             reason="Healthcare knowledge query routed to grounded RAG.",
@@ -135,10 +148,43 @@ class AgentRouter:
         if decision.route == Route.SAFETY:
             return self._safety_response(decision.reason)
 
+        if decision.route == Route.GREETING:
+            return self._greeting_response(question)
+
         if decision.route == Route.MCP and decision.term:
             return self._mcp_response(decision.term)
 
         return self.rag_engine.query(question)
+
+    @staticmethod
+    def _greeting_response(question: str) -> RAGResponse:
+        """Generate a lightweight conversational response without invoking RAG or MCP."""
+        q_lower = question.lower()
+        if any(k in q_lower for k in ("thank", "thx")):
+            answer = (
+                "You're welcome! Please feel free to ask if you have any questions about "
+                "nutrition, cardiovascular health, diabetes prevention, or general wellness guidelines."
+            )
+        else:
+            answer = (
+                "Hello! I am an informational healthcare assistant. I can answer questions about "
+                "evidence-based nutrition, dietary guidelines, cardiovascular health, and clinical "
+                "reference terminology. How can I help you today?"
+            )
+
+        return RAGResponse(
+            answer=answer,
+            grounded=False,
+            abstained=False,
+            sources=[],
+            retrieval_info=RetrievalInfo(
+                used=False,
+                results_count=0,
+                top_distance=None,
+                threshold=0.0,
+            ),
+            tool_used=None,
+        )
 
     def _extract_terminology_term(self, text: str) -> str | None:
         """Extract a clinical term if the query represents a definition inquiry."""
@@ -162,6 +208,12 @@ class AgentRouter:
             "can i",
             "modifications",
             "limits",
+            "limit",
+            "intake",
+            "upper limit",
+            "allowance",
+            "recommendation",
+            "recommendations",
             "diet sodium",
         )
         if any(kw in text for kw in non_terminology_keywords):

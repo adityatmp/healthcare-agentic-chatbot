@@ -1,0 +1,74 @@
+{
+  "cdc_hypertension_guide.pdf": {
+    "title": "CDC Clinical Guidelines for High Blood Pressure Management & Prevention",
+    "organization": "Centers for Disease Control and Prevention (CDC)",
+    "url": "https://www.cdc.gov/bloodpressure/",
+    "topic": "Hypertension & Cardiovascular Prevention"
+  },
+  "nih_ods_boron.pdf": {
+    "title": "Boron Fact Sheet for Health Professionals",
+    "organization": "National Institutes of Health (NIH) - Office of Dietary Supplements",
+    "url": "https://ods.od.nih.gov/factsheets/Boron-HealthProfessional/",
+    "topic": "Dietary Supplements & Minerals"
+  },
+  "nih_ods_vitamin_b12.pdf": {
+    "title": "Vitamin B12 Fact Sheet for Health Professionals",
+    "organization": "National Institutes of Health (NIH) - Office of Dietary Supplements",
+    "url": "https://ods.od.nih.gov/factsheets/VitaminB12-HealthProfessional/",
+    "topic": "Vitamins & Micronutrients"
+  },
+  "nih_ods_folate.pdf": {
+    "title": "Folate Fact Sheet for Health Professionals",
+    "organization": "National Institutes of Health (NIH) - Office of Dietary Supplements",
+    "url": "https://ods.od.nih.gov/factsheets/Folate-HealthProfessional/",
+    "topic": "Vitamins & Prenatal Nutrition"
+  },
+  "nih_ods_vitamin_d.pdf": {
+    "title": "Vitamin D Fact Sheet for Health Professionals",
+    "organization": "National Institutes of Health (NIH) - Office of Dietary Supplements",
+    "url": "https://ods.od.nih.gov/factsheets/VitaminD-HealthProfessional/",
+    "topic": "Bone Health & Micronutrients"
+  },
+  "nih_ods_calcium.pdf": {
+    "title": "Calcium Fact Sheet for Health Professionals",
+    "organization": "National Institutes of Health (NIH) - Office of Dietary Supplements",
+    "url": "https://ods.od.nih.gov/factsheets/Calcium-HealthProfessional/",
+    "topic": "Minerals & Bone Density"
+  },
+  "cdc_diabetes_basics.pdf": {
+    "title": "CDC Diabetes Basics, Diagnosis Criteria, and Prevention",
+    "organization": "Centers for Disease Control and Prevention (CDC)",
+    "url": "https://www.cdc.gov/diabetes/basics/",
+    "topic": "Chronic Metabolic Conditions"
+  },
+  "cdc_physical_activity.pdf": {
+    "title": "CDC Physical Activity Guidelines for Americans",
+    "organization": "Centers for Disease Control and Prevention (CDC)",
+    "url": "https://www.cdc.gov/physicalactivity/basics/adults/",
+    "topic": "Exercise & Preventive Health"
+  },
+  "cdc_cardiovascular_health.pdf": {
+    "title": "CDC Heart Disease Facts, Risk Factors, and Prevention",
+    "organization": "Centers for Disease Control and Prevention (CDC)",
+    "url": "https://www.cdc.gov/heartdisease/",
+    "topic": "Cardiovascular Health"
+  },
+  "medlineplus_atherosclerosis.pdf": {
+    "title": "MedlinePlus Medical Encyclopedia: Atherosclerosis & Arterial Health",
+    "organization": "National Library of Medicine (NLM) / MedlinePlus",
+    "url": "https://medlineplus.gov/atherosclerosis.html",
+    "topic": "Vascular Disease & Arterial Health"
+  },
+  "usda_dietary_guidelines.pdf": {
+    "title": "Dietary Guidelines for Americans: Core Elements and Dietary Limits",
+    "organization": "U.S. Department of Agriculture (USDA) & HHS",
+    "url": "https://www.dietaryguidelines.gov/",
+    "topic": "Nutrition & Dietary Patterns"
+  },
+  "who_healthy_diet.pdf": {
+    "title": "WHO Healthy Diet Fact Sheet: Macronutrient Distribution & Sodium Limits",
+    "organization": "World Health Organization (WHO)",
+    "url": "https://www.who.int/news-room/fact-sheets/detail/healthy-diet",
+    "topic": "Global Health & Healthy Eating"
+  }
+}

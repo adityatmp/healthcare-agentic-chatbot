@@ -32,6 +32,9 @@ class MetadataPreservingSplitter:
         for page in pages:
             source = page.metadata.get("source", "unknown.pdf")
             page_num = page.metadata.get("page", 1)
+            org = page.metadata.get("organization")
+            url = page.metadata.get("url")
+            title = page.metadata.get("title")
 
             split_texts = self._splitter.split_text(page.content)
 
@@ -51,6 +54,9 @@ class MetadataPreservingSplitter:
                     source_filename=source,
                     page_number=page_num,
                     chunk_index=idx,
+                    organization=org,
+                    url=url,
+                    title=title,
                 )
                 chunks.append(chunk)
 

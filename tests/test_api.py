@@ -27,9 +27,21 @@ def test_get_health_ollama():
 
 
 def test_post_chat_validation():
-    # Too short question (min_length=3)
-    response = client.post("/chat", json={"question": "hi"})
+    # Too short question (min_length=2)
+    response = client.post("/chat", json={"question": "a"})
     assert response.status_code == 422
+
+
+def test_post_chat_greetings():
+    for greeting in ("hello", "hi", "hey", "thanks", "thank you"):
+        response = client.post("/chat", json={"question": greeting})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["grounded"] is False
+        assert data["abstained"] is False
+        assert data["sources"] == []
+        assert data["tool_used"] is None
+        assert len(data["answer"]) > 10
 
 
 def test_post_chat_grounded():

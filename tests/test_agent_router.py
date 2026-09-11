@@ -450,3 +450,25 @@ def test_injection_response_states_guardrails_cannot_be_overridden():
     assert res.grounded is False
     assert res.abstained is True
     assert "safety guardrails" in res.answer.lower() or "cannot diagnose" in res.answer.lower()
+
+
+def test_greeting_routes_directly_without_rag_or_mcp():
+    """Conversational greetings and thanks receive direct responses without calling RAG or MCP."""
+    fake_rag = FakeRAGEngine()
+    fake_mcp = FakeMCPClient()
+    router = AgentRouter(rag_engine=fake_rag, mcp_client=fake_mcp)
+
+    for greeting in ("hello", "hi", "hey", "thanks", "thank you", "Hi there", "good morning"):
+        decision = router.classify(greeting)
+        assert decision.route == Route.GREETING
+
+        res = router.run(greeting)
+        assert res.grounded is False
+        assert res.abstained is False
+        assert res.sources == []
+        assert res.tool_used is None
+        assert len(res.answer) > 10
+
+    # Ensure neither RAG nor MCP was ever invoked
+    assert fake_rag._call_count == 0
+    assert fake_mcp._call_count == 0

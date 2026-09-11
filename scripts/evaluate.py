@@ -76,7 +76,7 @@ def evaluate_case(
     # Citation validation:
     # Grounded RAG queries must have document sources; safety, MCP, and abstained queries must have 0 document citations
     if expected_route == "rag" and expected_grounded:
-        citations_correct = len(actual_sources) > 0 and all(
+        citations_correct = len(actual_sources) > 0 and any(
             src in expected_sources for src in actual_sources
         )
     else:

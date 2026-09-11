@@ -25,9 +25,9 @@ class ChatRequest(BaseModel):
 
     question: str = Field(
         ...,
-        min_length=3,
+        min_length=2,
         max_length=1000,
-        json_schema_extra={"example": "What are the DASH diet sodium limits for hypertension?"},
+        json_schema_extra={"example": "What are the DASH diet sodium limits for high blood pressure?"},
     )
 
 

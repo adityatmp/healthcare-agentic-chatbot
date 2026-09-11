@@ -56,11 +56,14 @@ class RAGEngine:
         )
         self.ollama_client = OllamaClient()
 
-    def ingest_directory(self, docs_dir: str = "data/documents") -> IngestionSummary:
+    def ingest_directory(
+        self, docs_dir: str = "data/documents", clear_existing: bool = False
+    ) -> IngestionSummary:
         """Discovers and processes all PDF documents in the specified directory.
 
         Args:
             docs_dir: Path to directory containing PDF files.
+            clear_existing: If True, clears the vector store before ingesting.
 
         Returns:
             IngestionSummary containing processed counts and errors.
@@ -72,6 +75,10 @@ class RAGEngine:
             chunks_stored=0,
             errors=[],
         )
+
+        if clear_existing:
+            self.vector_store.clear()
+            logger.info("Cleared existing vector store collection prior to ingestion.")
 
         if not os.path.exists(docs_dir):
             summary.errors.append(f"Directory '{docs_dir}' does not exist.")
@@ -165,11 +172,15 @@ class RAGEngine:
             doc_name = meta.get("source", "unknown")
             page_num = meta.get("page", 1)
             chunk_id = meta.get("chunk_id", f"c{idx}")
+            org = meta.get("organization") or None
+            url = meta.get("url") or None
+            title = meta.get("title") or doc_name
             dist = match["distance"]
 
             doc_text = _sanitize_xml_tags(match["document"])
+            header_suffix = f" [{org}]" if org else ""
             context_blocks.append(
-                f"--- Document: {doc_name} (Page {page_num}) ---\n{doc_text}"
+                f"--- Document: {title} (Page {page_num}){header_suffix} ---\n{doc_text}"
             )
 
             # Deduplicate sources in citation list
@@ -182,6 +193,9 @@ class RAGEngine:
                         page=page_num,
                         chunk_id=chunk_id,
                         distance=dist,
+                        organization=org,
+                        url=url,
+                        title=title,
                     )
                 )
 

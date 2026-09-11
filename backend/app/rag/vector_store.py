@@ -55,6 +55,9 @@ class VectorStoreManager:
                 "page": chunk.page_number,
                 "chunk_id": chunk.chunk_id,
                 "chunk_index": chunk.chunk_index,
+                "organization": chunk.organization or "",
+                "url": chunk.url or "",
+                "title": chunk.title or chunk.source_filename,
             }
             for chunk in chunks
         ]

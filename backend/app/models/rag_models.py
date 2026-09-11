@@ -20,6 +20,9 @@ class TextChunk(BaseModel):
     source_filename: str
     page_number: int
     chunk_index: int
+    organization: Optional[str] = None
+    url: Optional[str] = None
+    title: Optional[str] = None
 
 
 class SourceMetadata(BaseModel):
@@ -29,6 +32,9 @@ class SourceMetadata(BaseModel):
     page: int
     chunk_id: str
     distance: float
+    organization: Optional[str] = None
+    url: Optional[str] = None
+    title: Optional[str] = None
 
 
 class RetrievalInfo(BaseModel):
